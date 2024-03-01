@@ -78,6 +78,7 @@ void stats_print(Statistics *self) {
         hal_log_info("    channel %d:", i);
         value_stats_print(&self->adc.values[i], "        ");
     }
+    hal_log_info("Din value: %02x",self->din);
 }
 
 static void stats_task(void *param) {

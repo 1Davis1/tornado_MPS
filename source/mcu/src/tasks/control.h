@@ -9,6 +9,7 @@
 #include <common/config.h>
 #include <drivers/skifio.h>
 #include <tasks/stats.h>
+#include <device/MPS.h>
 
 #include "config.h"
 
@@ -77,11 +78,12 @@ typedef struct {
     ControlAdc adc;
     ControlSync *sync;
     Statistics *stats;
+    PS_Control *MPS;
 } Control;
 
 void control_sync_init(ControlSync *self, SemaphoreHandle_t *ready_sem, size_t dac_chunk_size, size_t adc_chunk_size);
 
-void control_init(Control *self, Statistics *stats);
+void control_init(Control *self, Statistics *stats, PS_Control *MPS);
 void control_deinit(Control *self);
 
 void control_set_sync(Control *self, ControlSync *sync);

@@ -36,6 +36,7 @@ typedef volatile struct {
     uint32_t crc_error_count;
     DacStats dac;
     AdcStats adc;
+    uint8_t  din;
 } Statistics;
 
 void value_stats_reset(ValueStats *self);

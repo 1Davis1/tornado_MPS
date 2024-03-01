@@ -3,6 +3,7 @@
 #include <hal/assert.h>
 #include <hal/math.h>
 
+
 #define RB_STRUCT DacRingBuffer
 #define RB_PREFIX dac_rb
 #define RB_ITEM point_t
@@ -23,7 +24,7 @@
 #undef RB_ITEM
 #undef RB_CAPACITY
 
-void control_init(Control *self, Statistics *stats) {
+void control_init(Control *self, Statistics *stats, PS_Control* MPS) {
     self->dio.in = 0;
     self->dio.out = 0;
 
@@ -39,6 +40,7 @@ void control_init(Control *self, Statistics *stats) {
 
     hal_assert(stats != NULL);
     self->stats = stats;
+    self->MPS = MPS;
 }
 
 void control_deinit(Control *self) {
@@ -53,13 +55,17 @@ void control_set_sync(Control *self, ControlSync *sync) {
 }
 
 void control_dac_start(Control *self) {
+    #ifndef MPS_CTRL_VAR
     skifio_dac_enable();
+    #endif
     self->dac.running = true;
 }
 
 void control_dac_stop(Control *self) {
     self->dac.running = false;
+    #ifndef MPS_CTRL_VAR
     skifio_dac_disable();
+    #endif
 }
 
 void control_sync_init(ControlSync *self, SemaphoreHandle_t *ready_sem, size_t dac_chunk_size, size_t adc_chunk_size) {
@@ -77,6 +83,7 @@ static bool update_din(Control *self) {
     if (din != self->dio.in) {
         self->dio.in = din;
         self->sync->din_changed = true;
+        self->stats->din = din;
         return true;
     } else {
         return false;
@@ -120,7 +127,9 @@ static void control_task(void *param) {
 
         // Write discrete output
         if (self->sync->dout_changed) {
+            #ifndef MPS_CTRL_VAR
             hal_assert_retcode(skifio_dout_write(self->dio.out));
+            #endif
             self->sync->dout_changed = false;
         }
 
@@ -139,6 +148,16 @@ static void control_task(void *param) {
         if (self->dac.running) {
             if (dac_rb_read(&self->dac.buffer, &dac_value, 1) == 1) {
                 self->dac.last_point = dac_value;
+                #ifdef MPS_CTRL_VAR
+                if(self->MPS->Flag.fCCMode){
+                    int64_t Val = ((int64_t)dac_value * (int64_t)self->MPS->K.Iset)/1000000LL;
+                    if((Val>=0)&&(Val<=ISETMAX)) self->MPS->Ref_Set = Val;
+                }
+                else {
+                    int64_t Val = ((int64_t)dac_value * (int64_t)self->MPS->K.Vset)/1000000LL;
+                    if((Val>=0)&&(Val<=VSETMAX)) self->MPS->VRef_Set = Val;
+                }
+                #endif
                 // Decrement DAC notification counter.
                 if (self->dac.counter > 0) {
                     self->dac.counter -= 1;
@@ -155,8 +174,12 @@ static void control_task(void *param) {
         {
             SkifioInput input = {{0}};
             SkifioOutput output = {0};
-
+            #ifdef MPS_CTRL_VAR
+            skifio_dac_enable();
+            output.dac = 0x8000U+(uint16_t)(((int64_t)self->MPS->Feedback.FB_Val*16384LL)/240000LL);
+            #else
             output.dac = (int16_t)dac_value;
+            #endif
             hal_retcode ret = skifio_transfer(&output, &input);
             if (ret == HAL_INVALID_DATA) {
                 // CRC check error
@@ -170,6 +193,7 @@ static void control_task(void *param) {
             for (size_t i = 0; i < ADC_COUNT; ++i) {
                 point_t value = input.adcs[i];
                 adcs.points[i] = value;
+                self->MPS->Ain[i]=value;
 
                 // Update ADC value statistics
                 value_stats_update(&self->stats->adc.values[i], value);

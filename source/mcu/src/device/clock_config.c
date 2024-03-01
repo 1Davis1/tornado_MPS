@@ -95,6 +95,9 @@ void BOARD_BootClockRUN(void)
     CLOCK_SetRootDivider(kCLOCK_RootAudioAhb, 1U, 2U);                    /* Set root clock freq to 800MHZ/ 2= 400MHZ*/
     CLOCK_SetRootMux(kCLOCK_RootAudioAhb, kCLOCK_AudioAhbRootmuxSysPll1); /* switch AUDIO AHB to SYSTEM PLL1 */
 
+    CLOCK_SetRootDivider(kCLOCK_RootUart1, 1U, 1U);                     /* Set root clock freq to 80MHZ/ 1= 80MHZ */
+    CLOCK_SetRootMux(kCLOCK_RootUart1, kCLOCK_UartRootmuxSysPll1Div10); /* Set UART source to SysPLL1 Div10 80MHZ */
+ 
     CLOCK_SetRootDivider(kCLOCK_RootUart3, 1U, 1U);                     /* Set root clock freq to 80MHZ/ 1= 80MHZ */
     CLOCK_SetRootMux(kCLOCK_RootUart3, kCLOCK_UartRootmuxSysPll1Div10); /* Set UART source to SysPLL1 Div10 80MHZ */
 

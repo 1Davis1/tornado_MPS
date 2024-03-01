@@ -24,8 +24,16 @@
 #define BOARD_DEBUG_UART_CLK_FREQ                                                           \
     CLOCK_GetPllFreq(kCLOCK_SystemPll1Ctrl) / (CLOCK_GetRootPreDivider(kCLOCK_RootUart3)) / \
         (CLOCK_GetRootPostDivider(kCLOCK_RootUart3)) / 10
-#define BOARD_UART_IRQ         UART3_IRQn
-#define BOARD_UART_IRQ_HANDLER UART3_IRQHandler
+
+#define BOARD_UART1 UART1_BASE
+#define BOARD_UART1_INSTANCE 1U
+
+#define BOARD_UART1_CLK_FREQ                                                           \
+    CLOCK_GetPllFreq(kCLOCK_SystemPll1Ctrl) / (CLOCK_GetRootPreDivider(kCLOCK_RootUart1)) / \
+        (CLOCK_GetRootPostDivider(kCLOCK_RootUart1)) / 10
+#define BOARD_UART_IRQ         UART1_IRQn
+#define BOARD_UART_IRQ_HANDLER UART1_IRQHandler
+
 
 #define GPV5_BASE_ADDR        (0x32500000)
 #define FORCE_INCR_OFFSET     (0x4044)
@@ -49,6 +57,8 @@ extern "C" {
  ******************************************************************************/
 
 void BOARD_InitDebugConsole(void);
+void BOARD_InitUART1Pin(void);
+void BOARD_InitUART3Pin(void);
 void BOARD_InitMemory(void);
 void BOARD_RdcInit(void);
 

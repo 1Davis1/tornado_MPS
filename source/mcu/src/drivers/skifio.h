@@ -15,6 +15,10 @@
 #define SKIFIO_DIN_SIZE 8
 #define SKIFIO_DOUT_SIZE 4
 
+#define EXTSYNC 0
+#define EXTSTART 1
+#define CTRLCONN 2
+
 typedef int32_t SkifioAin;
 typedef int16_t SkifioAout;
 
@@ -32,11 +36,14 @@ typedef void (*SkifioDinCallback)(void *, SkifioDin);
 
 hal_retcode skifio_init();
 hal_retcode skifio_deinit();
+size_t skifio_readFlag(size_t Flag);
 
 hal_retcode skifio_dac_enable();
 hal_retcode skifio_dac_disable();
 
 hal_retcode skifio_transfer(const SkifioOutput *out, SkifioInput *in);
+size_t skifio_force_data_ready(void);
+void skifio_sync_tick(void);
 hal_retcode skifio_wait_ready(uint32_t delay_ms);
 
 hal_retcode skifio_dout_write(SkifioDout value);

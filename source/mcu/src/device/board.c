@@ -8,7 +8,7 @@
 #include "fsl_common.h"
 #include "fsl_debug_console.h"
 #include "fsl_rdc.h"
-#include "fsl_iomuxc.h"
+#include <fsl_iomuxc.h>
 #include "board.h"
 #include "fsl_clock.h"
 
@@ -25,6 +25,30 @@ void BOARD_InitDebugConsole(void)
     uint32_t uartClkSrcFreq = BOARD_DEBUG_UART_CLK_FREQ;
     CLOCK_EnableClock(kCLOCK_Uart3);
     DbgConsole_Init(BOARD_DEBUG_UART_INSTANCE, BOARD_DEBUG_UART_BAUDRATE, BOARD_DEBUG_UART_TYPE, uartClkSrcFreq);
+}
+
+void BOARD_InitUART1Pin(void)
+{
+    IOMUXC_SetPinMux(IOMUXC_SAI2_RXC_UART1_RX, 0U);
+    IOMUXC_SetPinConfig(IOMUXC_SAI2_RXC_UART1_RX, 
+                        IOMUXC_SW_PAD_CTL_PAD_DSE(6U) |
+                        IOMUXC_SW_PAD_CTL_PAD_FSEL(2U));
+    IOMUXC_SetPinMux(IOMUXC_SAI2_RXFS_UART1_TX, 0U);
+    IOMUXC_SetPinConfig(IOMUXC_SAI2_RXFS_UART1_TX, 
+                        IOMUXC_SW_PAD_CTL_PAD_DSE(6U) |
+                        IOMUXC_SW_PAD_CTL_PAD_FSEL(2U));  
+}
+
+void BOARD_InitUART3Pin(void)
+{
+    IOMUXC_SetPinMux(IOMUXC_UART3_RXD_UART3_RX, 0U);
+    IOMUXC_SetPinConfig(IOMUXC_UART3_RXD_UART3_RX, 
+                        IOMUXC_SW_PAD_CTL_PAD_DSE(6U) |
+                        IOMUXC_SW_PAD_CTL_PAD_FSEL(2U));
+    IOMUXC_SetPinMux(IOMUXC_UART3_TXD_UART3_TX, 0U);
+    IOMUXC_SetPinConfig(IOMUXC_UART3_TXD_UART3_TX, 
+                        IOMUXC_SW_PAD_CTL_PAD_DSE(6U) |
+                        IOMUXC_SW_PAD_CTL_PAD_FSEL(2U)); 
 }
 
 /* Initialize MPU, configure memory attributes for each region */

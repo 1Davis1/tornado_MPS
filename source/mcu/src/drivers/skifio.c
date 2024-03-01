@@ -108,6 +108,12 @@ typedef struct {
     volatile SkifioDinCallback din_callback;
     void *volatile din_user_data;
     volatile size_t sample_skip_counter;
+    volatile uint32_t sync_tick_counter;
+    struct {
+        unsigned ExtSync:1;
+        unsigned ExtStart:1;
+        unsigned ControlConnected:1;
+    }flags;
 } SkifioGlobalState;
 
 static SkifioGlobalState GS;
@@ -116,7 +122,7 @@ static SkifioGlobalState GS;
 _SkifioDebugInfo _SKIFIO_DEBUG_INFO = {0};
 #endif
 
-
+//GPIO_Interrupt Source = SkifioControlPins.smp_rdy (GPIO5.23 DATA_READY_FROM_STM)
 static void smp_rdy_handler(void *user_data, HalGpioBlockIndex block, HalGpioPinMask mask) {
     BaseType_t hptw = pdFALSE;
 
@@ -128,6 +134,10 @@ static void smp_rdy_handler(void *user_data, HalGpioBlockIndex block, HalGpioPin
         xSemaphoreGiveFromISR(GS.smp_rdy_sem, &hptw);
     } else {
         GS.sample_skip_counter -= 1;
+    }
+    GS.sync_tick_counter = 0;
+    if(!GS.flags.ExtSync) {
+        GS.flags.ExtSync = 1;
     }
 
     // Yield to higher priority task
@@ -256,6 +266,10 @@ hal_retcode skifio_init() {
 
     init_ctrl_pins();
     init_dio_pins();
+    GS.sync_tick_counter = 0;
+    GS.flags.ExtStart = 0;
+    GS.flags.ExtSync = 0;
+    GS.flags.ControlConnected = 0;
 
     GS.smp_rdy_sem = xSemaphoreCreateBinary();
     hal_assert(GS.smp_rdy_sem != NULL);
@@ -286,6 +300,16 @@ hal_retcode skifio_deinit() {
     }
     hal_spi_deinit();
     return HAL_SUCCESS;
+}
+
+size_t skifio_readFlag(size_t Flag){
+    switch(Flag){
+        case EXTSYNC: return GS.flags.ExtSync;
+        case EXTSTART: return GS.flags.ExtStart;
+        case CTRLCONN: return GS.flags.ControlConnected;
+        default: return 0;
+    }
+    return 0;
 }
 
 hal_retcode skifio_dac_enable() {
@@ -345,6 +369,38 @@ hal_retcode skifio_transfer(const SkifioOutput *out, SkifioInput *in) {
     return HAL_SUCCESS;
 }
 
+// force data_ready software pulse
+size_t skifio_force_data_ready(void) {
+
+    if(GS.sync_tick_counter>1) {
+        if(GS.flags.ExtSync) {
+            if(GS.sync_tick_counter>3) {
+                GS.flags.ExtSync = 0;
+                GS.sample_skip_counter = 1;
+                GS.sync_tick_counter = 1;
+                hal_log_info("Ext sync lost! Switch to internal 10kHz sync");
+                }
+            else {
+                GS.sync_tick_counter++; 
+            }
+        }
+        else {
+            GS.sync_tick_counter = 1;
+            return true;
+        }
+     }
+    else { 
+        GS.sync_tick_counter++; 
+        }
+    return false;
+}
+
+// increment of tick counter used for EXT_Sync signal detector
+void skifio_sync_tick(void) {
+    GS.sync_tick_counter++;
+    //hal_log_info(" %ld",GS.sync_tick_counter);
+}
+// wait for stm_data_ready pulse
 hal_retcode skifio_wait_ready(uint32_t timeout_ms) {
     // Wait for sample ready semaphore
     if (xSemaphoreTake(GS.smp_rdy_sem, timeout_ms) != pdTRUE) {
@@ -353,7 +409,6 @@ hal_retcode skifio_wait_ready(uint32_t timeout_ms) {
 
     // Wait before data request to reduce ADC noise.
     hal_busy_wait_ns(READY_DELAY_NS);
-
     return HAL_SUCCESS;
 }
 
